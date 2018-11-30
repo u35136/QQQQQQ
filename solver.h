@@ -95,11 +95,21 @@ public:
 				after_expects[i][j] = new answer[SIZE];
 			}
 		}
+
+		// init for impossible
+		for(int i = 0; i < SIZE; ++i) {
+			expects[0][i] = -1.0;
+			for(int j = 0; j < 4;++j) {
+				after_expects[0][j][i] = -1.0;
+			}
+		}
+		std::cout << "ALL impossible init finish." << std::endl << std::flush;
+
 		// calculate
 		for(int pos = 0; pos < 6; pos++){
-			for(int tile = 1; tile < 3; tile++){
+			for(int tile = 1; tile <= 3; tile++){
 				board23 board;
-				int bag[3] = {0};
+				int bag[4] = {0};
 				bag[tile] = -1;
 				action23::place(tile, pos).apply(board);
 				get_before_expect(board, tile, bag);
@@ -217,10 +227,10 @@ public:
 
 	answer get_after_expect(board23 board, int hint, int last_action, int bag[]){
 		//init bag
-		for(int i = 0; i < hint_type; ++i) {
+		for(int i = 1; i < hint_type; ++i) {
 			if(bag[i] != -1) {break;}
-			else if(i == 2) {
-				for(int j = 0; j < hint_type; ++j) {
+			else if(i == 3) {
+				for(int j = 1; j < hint_type; ++j) {
 					bag[j] = 0;
 				}
 			}
@@ -229,11 +239,11 @@ public:
 		double expect = 0.0;
 		double best_min = 1000, best_max = -1000;
 		int count = 0;
-		for(int i = 0; i < 3; ++i){ 
+		for(int i = 1; i < hint_type; ++i){ 
 			if(bag[i] == -1) {continue;}
 			double min_expect = 0.0, max_expect = 0.0;
 			std::vector <int> pos;
-			for(int j = 0; j < 3; j++) {
+			for(int j = 0; j < 4; j++) {
 				if((j == 2) && (last_action == 1 || last_action == 3)) { // left and right 
 					break;
 				}
@@ -252,12 +262,12 @@ public:
 			}
 			for(int j = 0; j < pos.size(); j++){//place rule 
 				board23 b = board; 
-				int mov_result = action23::place(i, pos[j]).apply(b);
+				int mov_result = action23::place(hint, pos[j]).apply(b);
 				int reward = 0;
 				if(i == 3) { reward = 3;}
 				if(mov_result != -1){
-					int temp_bag[3]={0};
-					for(int h = 0; h < hint_type; ++h) {
+					int temp_bag[4]={0};
+					for(int h = 1; h < hint_type; ++h) {
 						temp_bag[h] = bag[h];
 					}
 					temp_bag[i] = -1;
