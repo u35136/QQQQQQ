@@ -7,6 +7,9 @@
 #include <numeric>
 #include <vector>
 
+std::ostream& debug = std::cout;
+//std::ostream& debug = *(new std::ofstream);
+
 static const int max_index = board23::POSSIBLE_INDEX;
 static const int hint_type = 4;
 static const int row =  board23::ROW;
@@ -108,6 +111,7 @@ public:
 		// calculate
 		for(int pos = 0; pos < 6; pos++){
 			for(int tile = 1; tile <= 3; tile++){
+				debug << "pos: " << pos << " tile: " << tile << std::endl << std::endl << std::flush; 
 				board23 board;
 				int bag[4] = {0};
 				bag[tile] = -1;
@@ -182,6 +186,12 @@ public:
 	}
 
 	answer get_before_expect(board23 board, int hint, int bag[]){
+		debug << std::endl << "in before state >> " << std::endl << "h: " << hint << std::endl;
+		for(int i = 0; i < hint_type; i++) {
+			debug << bag[i] << " ";
+		}
+		debug << std::endl << board << std::flush;
+		
 		long index = get_index(board);
 
 		if(expects[hint][index].avg > -1)
@@ -226,6 +236,12 @@ public:
 	}
 
 	answer get_after_expect(board23 board, int hint, int last_action, int bag[]){
+		debug << std::endl << "in after state >> " << std::endl << "h: " << hint << " " << "a: " << last_action << std::endl;
+		for(int i = 0; i < hint_type; i++) {
+			debug << bag[i] << " ";
+		}
+		debug << std::endl << board << std::flush;
+
 		//init bag
 		for(int i = 1; i < hint_type; ++i) {
 			if(bag[i] != -1) {break;}
