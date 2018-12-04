@@ -11,7 +11,6 @@
 #include <iterator>
 #include <string>
 #include "board23.h"
-#include "action23.h"
 #include "solver.h"
 
 int main(int argc, const char* argv[]) {

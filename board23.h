@@ -66,7 +66,7 @@ public:
 	 * return 0 if the action is valid, or -1 if not
 	 */
 	reward place(unsigned pos, cell tile) {
-		if (pos >= 14) return -1;
+		if (pos > POSSIBLE_INDEX) return -1;
 		if (tile != 1 && tile != 2 && tile != 3) return -1;
 		operator()(pos) = tile;
 		return 0;
@@ -76,6 +76,7 @@ public:
 	 * apply an action to the board23
 	 * return the reward of the action, or -1 if the action is illegal
 	 */
+	
 	reward slide(unsigned opcode) {
 		switch (opcode & 0b11) {
 		case 0: return slide_up();
@@ -95,30 +96,30 @@ public:
 			bool move_flag = false;
 			int top = 0, hold = 0;
 			for (int c = 0; c < 3; c++) {
-				int tile = row[c];
-				if (tile == 0) {
+				int temp_tile = row[c];
+				if (temp_tile == 0) {
 					if (!move_flag)	move_flag = true;
-					else row[top++] = tile;
+					else row[top++] = temp_tile;
 					continue;
 				}
 				row[c] = 0;
-				if (((hold == 1 && tile == 2) || (hold == 2 && tile == 1)) && !move_flag) {
+				if (((hold == 1 && temp_tile == 2) || (hold == 2 && temp_tile == 1)) && !move_flag) {
 					row[top-1] = 3;
 					hold = 0;
 					move_flag = true;
 				}
 				else if (hold && hold != 1 && hold != 2 && !move_flag) {
-					if (tile == hold) {
-						row[top-1] = ++tile;
+					if (temp_tile == hold) {
+						row[top-1] = ++temp_tile;
 						hold = 0;
 						move_flag = true;
 					} else {
-						row[top++] = tile;
-						hold = tile;
+						row[top++] = temp_tile;
+						hold = temp_tile;
 					}
 				} else { 
-					row[top++] = tile;
-					hold = tile;
+					row[top++] = temp_tile;
+					hold = temp_tile;
 				}
 			}
 			//if (hold) tile[r][top] = hold;
@@ -141,24 +142,24 @@ public:
 		auto& row_1 = tile[1];
 		for (int c = 0; c < 3; c++)  {  
 			int hold = row_0[c];
-			int tile = row_1[c];
+			int temp_tile = row_1[c];
 			if(hold == 0) {
-				row_0[c] = tile;
+				row_0[c] = temp_tile;
 				row_1[c] = 0;
 			}
-			else if((hold == 1 && tile == 2) || (hold == 2 && tile == 1)) {
+			else if((hold == 1 && temp_tile == 2) || (hold == 2 && temp_tile == 1)) {
 				row_0[c] = 3;
 				row_1[c]= 0;
 			}
 			else if(hold && hold != 1 && hold != 2){
-				if (tile == hold) {
-						row_0[c] = ++tile;
+				if (temp_tile == hold) {
+						row_0[c] = ++temp_tile;
 						row_1[c] = 0;
 					} 
 			}
 			else {
 				row_0[c] = hold;
-				row_1[c] = tile;
+				row_1[c] = temp_tile;
 			}
 		}
 		reward after_score = final_score();
@@ -178,7 +179,9 @@ public:
 	}
 
 	void reflect_vertical() {
-		std::swap(tile[0], tile[1]);
+		for(int i = 0; i < 3; ++i){
+			std::swap(tile[0][i], tile[1][i]);
+		}
 	}
 
 	void reverse() { reflect_horizontal(); reflect_vertical(); }
@@ -203,9 +206,19 @@ public:
 		return out;*/
 	}
 	friend std::istream& operator >>(std::istream& in, board23& b) {
+		int tile_type[15] = {0, 1, 2, 3, 6, 12, 24, 48, 96, 192, 384, 768, 1536, 3072, 6144};
 		for (int i = 0; i < 6; i++) {
 			while (!std::isdigit(in.peek()) && in.good()) in.ignore(1);
-			in >> b(i);
+			int temp;
+			in >> temp;
+			for(int i = 14; i >= 0; i--) {
+				if(temp >= tile_type[i]) {
+					temp = i;
+					break;
+				}
+			}
+			b(i) = temp;
+			//std::cout << b(i) 
 			//b(i) = log2(b(i));
 		}
 		std::cout << b;

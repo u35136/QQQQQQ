@@ -3,12 +3,12 @@
 #include <algorithm>
 #include <cmath>
 #include "board23.h"
-#include "action23.h"
 #include <numeric>
 #include <vector>
 
-std::ostream& debug = std::cout;
-//std::ostream& debug = *(new std::ofstream);
+//std::ostream& debug = std::cout;
+std::ostream& debug = *(new std::ofstream);
+std::ostream& debug_for_place = *(new std::ofstream);
 
 static const int max_index = board23::POSSIBLE_INDEX;
 static const int hint_type = 4;
@@ -113,10 +113,15 @@ public:
 			for(int tile = 1; tile <= 3; tile++){
 				debug << "pos: " << pos << " tile: " << tile << std::endl << std::endl << std::flush; 
 				board23 board;
-				int bag[4] = {0};
-				bag[tile] = -1;
-				action23::place(tile, pos).apply(board);
-				get_before_expect(board, tile, bag);
+				board.place(pos, tile);
+				debug_for_place << "init B =  " << board << std::endl;
+				for(int temp = 1; temp < hint_type; ++temp) {
+					if(temp == tile) {continue; }
+					int bag[4] = {0};
+					bag[tile] = -1;
+					bag[temp] = -1;
+					get_before_expect(board, temp, bag);
+				}
 			}
 		}
 		std::cout << "solver is ready." << std::endl;
@@ -145,24 +150,14 @@ public:
 			return ans_before_expect(state, hint);
 		}
 		else if(type.is_after() ){//&& is_legal_after_state(state, hint)
-			double expect = 0.0;
-			double best_expect = -1000;
-			bool is_moved = false;
-			int best_move = 0;
+			answer expect;
 			for (int op : {3, 2, 1, 0}) {
-				board23 b = state;
-				int reward = b.slide(op);
-				if (reward != -1) {
 					//expect = reward;
-					expect = ans_after_expect(b, hint, op).avg + reward;
-					if (expect > best_expect) {
-						is_moved = true;
-						best_move = op;
-						best_expect = expect;
-					}
+					expect = ans_after_expect(state, hint, op).avg;
+					if (expect.avg > -1) {
+						return expect;		
 				}
 			}
-			if(is_moved) {return ans_after_expect(state, hint, best_move);}
 		}
 		return {};
 		// for a legal state, return its three values.
@@ -198,12 +193,14 @@ public:
 			return expects[hint][index];
 
 		double expect = 0.0, min_expect = 0.0, max_expect = 0.0;
-		double best_expect = -1000, best_min = 1000, best_max = -1000;
+		double best_expect = -1000000, best_min = 1000000, best_max = -1000000;
 		bool is_moved = false;
 		//std::cout << "after" << std::flush;
+		debug_for_place << "before slide B =  " << board << std::endl;
 		for(int op: {3, 2, 1, 0}){
 			board23 b = board;
 			int reward = b.slide(op);
+			debug_for_place << "after op=" << op << " slide B =  " << b << std::endl;
 			if(reward != -1){
 				//expect = reward;
 				//answer temp = answer();
@@ -236,6 +233,7 @@ public:
 	}
 
 	answer get_after_expect(board23 board, int hint, int last_action, int bag[]){
+		// board is already silde
 		debug << std::endl << "in after state >> " << std::endl << "h: " << hint << " " << "a: " << last_action << std::endl;
 		for(int i = 0; i < hint_type; i++) {
 			debug << bag[i] << " ";
@@ -253,32 +251,35 @@ public:
 		}
 		
 		double expect = 0.0;
-		double best_min = 1000, best_max = -1000;
+		double best_min = 1000000, best_max = -1000000;
 		int count = 0;
 		for(int i = 1; i < hint_type; ++i){ 
 			if(bag[i] == -1) {continue;}
 			double min_expect = 0.0, max_expect = 0.0;
 			std::vector <int> pos;
-			for(int j = 0; j < 4; j++) {
+			for(int j = 0; j < 3; j++) {
 				if((j == 2) && (last_action == 1 || last_action == 3)) { // left and right 
 					break;
 				}
 				else if(last_action == 0) {// up
 					if(board[1][j] == 0) {pos.push_back(j+3);}
 				}
-				else if(last_action == 1) {// right
+				else if(last_action == 3) {// right
 					if(board[j][2] == 0) {pos.push_back(2 + (3 * j));}
 				}
 				else if(last_action == 2) {// down
 					if(board[0][j] == 0) {pos.push_back(j);}
 				}
-				else if(last_action == 3) {// left
+				else if(last_action == 1) {// left
 					if(board[j][0] == 0) {pos.push_back((3 * j));}
 				}
 			}
 			for(int j = 0; j < pos.size(); j++){//place rule 
 				board23 b = board; 
-				int mov_result = action23::place(hint, pos[j]).apply(b);
+				int mov_result = b.place(pos[j], hint);
+				debug << std::endl << "in after state put >> " << std::endl;
+				debug << "pos: " << pos[j] << " h: " << hint << " next: " << i << std::endl;
+				debug << b << std::flush;
 				int reward = 0;
 				if(i == 3) { reward = 3;}
 				if(mov_result != -1){
@@ -297,7 +298,7 @@ public:
 						best_min = min_expect;
 					}
 					if (max_expect > best_max) {
-						best_min = min_expect;
+						best_max = max_expect;
 					}
 				}
 			}
@@ -305,8 +306,10 @@ public:
 		long index = get_index(board);
 		if(count != 0){after_expects[hint][last_action][index].avg = expect / count;}
 		else {after_expects[hint][last_action][index].avg = 0;}
+
 		after_expects[hint][last_action][index].min = best_min;
 		after_expects[hint][last_action][index].max = best_max;
+
 		return after_expects[hint][last_action][index];
 	}
 
